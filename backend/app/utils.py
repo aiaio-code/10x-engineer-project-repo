@@ -2,6 +2,7 @@
 
 from typing import List
 from app.models import Prompt
+import datetime  # Add the import for datetime module
 
 
 def sort_prompts_by_date(prompts: List[Prompt], descending: bool = True) -> List[Prompt]:
@@ -44,3 +45,9 @@ def extract_variables(content: str) -> List[str]:
     import re
     pattern = r'\{\{(\w+)\}\}'
     return re.findall(pattern, content)
+
+
+def get_current_time() -> datetime.datetime:
+    """Get the current UTC time."""
+    return datetime.datetime.utcnow()
+

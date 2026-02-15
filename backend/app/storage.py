@@ -6,7 +6,7 @@ In a production environment, this would be replaced with a database.
 
 from typing import Dict, List, Optional
 from app.models import Prompt, Collection
-
+from app.utils import get_current_time
 
 class Storage:
     def __init__(self):
@@ -37,6 +37,22 @@ class Storage:
             return True
         return False
     
+    def update_prompt_partial(self, prompt_id: str, prompt_data: dict) -> Optional[Prompt]:
+        prompt = self.get_prompt(prompt_id)
+        if not prompt:
+            return None
+
+        # Update only provided fields
+        for key, value in prompt_data.items():
+            setattr(prompt, key, value)
+
+        # Update timestamp
+        prompt.updated_at = get_current_time()
+
+        # Save changes
+        self._prompts[prompt_id] = prompt
+        return prompt
+
     # ============== Collection Operations ==============
     
     def create_collection(self, collection: Collection) -> Collection:

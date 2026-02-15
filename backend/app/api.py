@@ -112,8 +112,22 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     return storage.update_prompt(prompt_id, updated_prompt)
 
 
-# NOTE: PATCH endpoint is missing! Students need to implement this.
-# It should allow partial updates (only update provided fields)
+# ... existing imports ...
+
+@app.patch("/prompts/{prompt_id}", response_model=Prompt)
+def patch_prompt(prompt_id: str, prompt_data: PromptUpdate):
+    # Get existing prompt
+    existing = storage.get_prompt(prompt_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+
+    # Convert incoming model to dict and remove None values
+    update_data = {k: v for k, v in prompt_data.dict(exclude_unset=True).items() if v is not None}
+
+    # Perform partial update
+    updated_prompt = storage.update_prompt_partial(prompt_id, update_data)
+
+    return updated_prompt
 
 
 @app.delete("/prompts/{prompt_id}", status_code=204)
