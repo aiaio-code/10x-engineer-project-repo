@@ -6,8 +6,6 @@ from app.models import Prompt
 
 def sort_prompts_by_date(prompts: List[Prompt], descending: bool = True) -> List[Prompt]:
     """Sort prompts by creation date.
-    
-    Note: There might be a bug here. Check the sort order!
     """
     return sorted(prompts, key=lambda p: p.created_at, reverse=descending)
 
