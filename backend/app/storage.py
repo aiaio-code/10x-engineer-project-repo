@@ -58,6 +58,20 @@ class Storage:
     def get_prompts_by_collection(self, collection_id: str) -> List[Prompt]:
         return [p for p in self._prompts.values() if p.collection_id == collection_id]
     
+    def get_uncategorized_collection(self) -> Collection:
+        # Check if the "Uncategorized" collection exists
+        uncategorized_collection = next((c for c in self._collections.values() if c.name == 'Uncategorized'), None)
+
+        # If not, create it
+        if not uncategorized_collection:
+            uncategorized_collection = Collection(
+                name='Uncategorized',
+                description='Default collection for uncategorized prompts'
+            )
+            self.create_collection(uncategorized_collection)
+
+        return uncategorized_collection
+
     # ============== Utility ==============
     
     def clear(self):
@@ -67,3 +81,4 @@ class Storage:
 
 # Global storage instance
 storage = Storage()
+

@@ -2,8 +2,7 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
-
+from typing import Optional, Any  # Import Any for dynamic typing
 from app.models import (
     Prompt, PromptCreate, PromptUpdate,
     Collection, CollectionCreate,
@@ -125,6 +124,7 @@ def delete_prompt(prompt_id: str):
 
 
 # ============== Collection Endpoints ==============
+
 @app.get("/collections", response_model=CollectionList)
 def list_collections():
     collections = storage.get_all_collections()
@@ -146,15 +146,26 @@ def create_collection(collection_data: CollectionCreate):
 
 
 @app.delete("/collections/{collection_id}", status_code=204)
-def delete_collection(collection_id: str):
-    # BUG #4: We delete the collection but don't handle the prompts!
-    # Prompts with this collection_id become orphaned with invalid reference
-    # Should either: delete the prompts, set collection_id to None, or prevent deletion
-    
-    if not storage.delete_collection(collection_id):
+def delete_collection(collection_id: str, delete_associated_prompts: bool = False):
+    # Check if the collection exists
+    collection = storage.get_collection(collection_id)
+    if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
     
-    # Missing: Handle prompts that belong to this collection!
-    
-    return None
+    if delete_associated_prompts:
+        # Delete associated prompts
+        prompts_to_delete = storage.get_prompts_by_collection(collection_id)
+        for prompt in prompts_to_delete:
+            storage.delete_prompt(prompt.id)
+    else:
+        # Ensure "Uncategorized" collection exists
+        uncategorized = storage.get_uncategorized_collection()
+        for prompt in storage.get_prompts_by_collection(collection_id):
+            prompt.collection_id = uncategorized.id
+            storage.update_prompt(prompt.id, prompt)  # Update each prompt with new collection ID
+
+    # Proceed to delete the collection
+    storage.delete_collection(collection_id)
+
+    return None  # Ensure explicit return statement for clarity
 
