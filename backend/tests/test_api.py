@@ -151,29 +151,87 @@ class TestCollections:
         response = client.get("/collections/nonexistent-id")
         assert response.status_code == 404
     
-    def test_delete_collection_with_prompts(self, client: TestClient, sample_collection_data, sample_prompt_data):
-        """Test deleting a collection that has prompts.
+    # def test_delete_collection_with_prompts(self, client: TestClient, sample_collection_data, sample_prompt_data):
+    #     """Test deleting a collection that has prompts.
         
-        NOTE: Bug #4 - prompts become orphaned after collection deletion.
-        This test documents the current (buggy) behavior.
-        After fixing, update the test to verify correct behavior.
+    #     NOTE: Bug #4 - prompts become orphaned after collection deletion.
+    #     This test documents the current (buggy) behavior.
+    #     After fixing, update the test to verify correct behavior.
+    #     """
+    #     # Create collection
+    #     col_response = client.post("/collections", json=sample_collection_data)
+    #     collection_id = col_response.json()["id"]
+        
+    #     # Create prompt in collection
+    #     prompt_data = {**sample_prompt_data, "collection_id": collection_id}
+    #     prompt_response = client.post("/prompts", json=prompt_data)
+    #     prompt_id = prompt_response.json()["id"]
+        
+    #     # Delete collection
+    #     client.delete(f"/collections/{collection_id}")
+        
+    #     # The prompt still exists but has invalid collection_id
+    #     # This is Bug #4 - should be handled properly
+    #     prompts = client.get("/prompts").json()["prompts"]
+    #     if prompts:
+    #         # Prompt exists with orphaned collection_id
+    #         assert prompts[0]["collection_id"] == collection_id
+    #         # After fix, collection_id should be None or prompt should be deleted
+
+    def test_delete_collection_with_prompts_and_deletion(self, client: TestClient, sample_collection_data, sample_prompt_data):
+        """Test deleting a collection along with associated prompts.
+
+        When delete_associated_prompts is True, both the collection
+        and its prompts should be deleted.
         """
         # Create collection
         col_response = client.post("/collections", json=sample_collection_data)
         collection_id = col_response.json()["id"]
-        
+
         # Create prompt in collection
         prompt_data = {**sample_prompt_data, "collection_id": collection_id}
         prompt_response = client.post("/prompts", json=prompt_data)
         prompt_id = prompt_response.json()["id"]
-        
-        # Delete collection
-        client.delete(f"/collections/{collection_id}")
-        
-        # The prompt still exists but has invalid collection_id
-        # This is Bug #4 - should be handled properly
+
+        # Delete collection with associated prompts
+        client.delete(f"/collections/{collection_id}?delete_associated_prompts=True")
+
+        # Verify that collection and prompts are deleted
+        col_get_response = client.get(f"/collections/{collection_id}")
+        assert col_get_response.status_code == 404
+
+        prompt_get_response = client.get(f"/prompts/{prompt_id}")
+        assert prompt_get_response.status_code == 404
+
+    def test_delete_collection_with_prompts_and_reassign(self, client: TestClient, sample_collection_data, sample_prompt_data):
+        """Test deleting a collection with prompts being reassigned.
+
+        When delete_associated_prompts is False, the prompts
+        should be reassigned to the "Uncategorized" collection.
+        """
+        # Create collection
+        col_response = client.post("/collections", json=sample_collection_data)
+        collection_id = col_response.json()["id"]
+
+        # Create a prompt in the collection
+        prompt_data = {**sample_prompt_data, "collection_id": collection_id}
+        client.post("/prompts", json=prompt_data)
+
+        # Delete collection without deleting prompts
+        client.delete(f"/collections/{collection_id}?delete_associated_prompts=False")
+
+        # Verify that the original collection is deleted
+        col_get_response = client.get(f"/collections/{collection_id}")
+        assert col_get_response.status_code == 404
+
+        # Verify "Uncategorized" collection is created or exists
+        uncategorized = client.get("/collections?name=Uncategorized").json()["collections"]
+        assert len(uncategorized) == 1
+
+        # Verify all prompts are reassigned to "Uncategorized"
+        uncategorized_id = uncategorized[0]["id"]
         prompts = client.get("/prompts").json()["prompts"]
-        if prompts:
-            # Prompt exists with orphaned collection_id
-            assert prompts[0]["collection_id"] == collection_id
-            # After fix, collection_id should be None or prompt should be deleted
+        assert len(prompts) > 0
+        for prompt in prompts:
+            assert prompt["collection_id"] == uncategorized_id
+
