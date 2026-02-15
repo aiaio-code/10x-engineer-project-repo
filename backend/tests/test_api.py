@@ -107,13 +107,34 @@ class TestPrompts:
         # The updated_at should be different from original
         # assert data["updated_at"] != original_updated_at  # Uncomment after fix
     
+    def test_partial_update_prompt(self, client: TestClient, sample_prompt_data):
+        # Create a prompt first
+        create_response = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create_response.json()["id"]
+
+        # Partially update the prompt (title and description)
+        update_data = {
+            "title": "Partially Updated Title",
+            "description": "Partially updated description"
+        }
+
+        response = client.patch(f"/prompts/{prompt_id}", json=update_data)
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify updated fields
+        assert data["title"] == update_data["title"]
+        assert data["description"] == update_data["description"]
+
+        # Verify non-updated fields remain unchanged
+        assert data["content"] == sample_prompt_data["content"]
+        
     def test_sorting_order(self, client: TestClient):
         """Test that prompts are sorted newest first.
         
         NOTE: This test might fail due to Bug #3!
         """
         import time
-        
         # Create prompts with delay
         prompt1 = {"title": "First", "content": "First prompt content"}
         prompt2 = {"title": "Second", "content": "Second prompt content"}
