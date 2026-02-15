@@ -99,8 +99,7 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         if not collection:
             raise HTTPException(status_code=400, detail="Collection not found")
     
-    # BUG #2: We're not updating the updated_at timestamp!
-    # The updated prompt keeps the old timestamp
+    # BUG #2 fixed: Now updating the updated_at timestamp correctly
     updated_prompt = Prompt(
         id=existing.id,
         title=prompt_data.title,
@@ -108,7 +107,7 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         description=prompt_data.description,
         collection_id=prompt_data.collection_id,
         created_at=existing.created_at,
-        updated_at=existing.updated_at  # BUG: Should be get_current_time()
+        updated_at=get_current_time()  # Updated this line
     )
     
     return storage.update_prompt(prompt_id, updated_prompt)
@@ -139,7 +138,6 @@ def get_collection(collection_id: str):
         raise HTTPException(status_code=404, detail="Collection not found")
     return collection
     
-
 
 @app.post("/collections", response_model=Collection, status_code=201)
 def create_collection(collection_data: CollectionCreate):
